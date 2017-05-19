@@ -24,9 +24,9 @@ logging:
 
 # Addresses where mauGFHS should listen on.
 listen:
-  - # Listen address
-    address: localhost
-    # Listen port
-    port: 29309
-    # Whether or not to trust headers such as X-Forwarded-For
-    trustHeaders: false
+  # Listen address
+  address: localhost
+  # Listen port
+  port: 29309
+  # Whether or not to trust headers such as X-Forwarded-For
+  trustHeaders: false

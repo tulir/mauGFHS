@@ -28,9 +28,9 @@ import (
 
 // Config is the base configuration container.
 type Config struct {
-	Database  DBConfig         `yaml:"database"`
-	Addresses []ListenLocation `yaml:"listen"`
-	Logging   LogConfig        `yaml:"logging"`
+	Database DBConfig       `yaml:"database"`
+	Listen   ListenLocation `yaml:"listen"`
+	Logging  LogConfig      `yaml:"logging"`
 }
 
 // LogConfig contains logging configurations
