@@ -66,6 +66,7 @@ type ListenLocation struct {
 	Address      string `yaml:"address"`
 	Port         uint8  `yaml:"port"`
 	TrustHeaders bool   `yaml:"trustHeaders"`
+	PathPrefix   string `yaml:"pathPrefix"`
 }
 
 // DBConfig contains connection information for the database.
@@ -82,12 +83,8 @@ func (config DBConfig) GetDSN() string {
 	return fmt.Sprintf("%s:%s@tcp(%s:%d)/%s", config.Username, config.Password, config.Host, config.Port, config.Database)
 }
 
-var config Config
-
-// GetConfig returns the singleton Config instance.
-func GetConfig() Config {
-	return config
-}
+// MainConfig is the main singleton config instance.
+var MainConfig = &Config{}
 
 // Open opens the config at the given path.
 func Open(path string) error {
@@ -95,5 +92,5 @@ func Open(path string) error {
 	if err != nil {
 		return err
 	}
-	return yaml.Unmarshal(data, &config)
+	return yaml.Unmarshal(data, MainConfig)
 }

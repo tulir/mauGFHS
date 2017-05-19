@@ -10,7 +10,7 @@ database:
 logging:
   # Directory for log files
   directory: "."
-  # Format for log file names.
+  # Format for log file names
   # Arguments:
   #   #1: Date
   #   #2: Log file index
@@ -22,7 +22,7 @@ logging:
   # Log timestamp format (Go-style)
   timestampFormat: 15:04:05 02.01.2006
 
-# Addresses where mauGFHS should listen on.
+# Addresses where mauGFHS should listen on
 listen:
   # Listen address
   address: localhost
@@ -30,3 +30,5 @@ listen:
   port: 29309
   # Whether or not to trust headers such as X-Forwarded-For
   trustHeaders: false
+  # Prefix for API endpoint paths
+  pathPrefix: /api
