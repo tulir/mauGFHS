@@ -1,0 +1,32 @@
+# Database configuration
+database:
+  host: localhost
+  port: 3306
+  username: root
+  password: password
+  database: maugfhs
+
+# Logging configuration
+logging:
+  # Directory for log files
+  directory: "."
+  # Format for log file names.
+  # Arguments:
+  #   #1: Date
+  #   #2: Log file index
+  fileNameFormat: "%[1]s-%02[2]d.log"
+  # File date format (Go-style)
+  fileDateFormat: 2006-01-02
+  # Unix permissions for log files
+  fileMode: 0444
+  # Log timestamp format (Go-style)
+  timestampFormat: 15:04:05 02.01.2006
+
+# Addresses where mauGFHS should listen on.
+listen:
+  - # Listen address
+    address: localhost
+    # Listen port
+    port: 29309
+    # Whether or not to trust headers such as X-Forwarded-For
+    trustHeaders: false
