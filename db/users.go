@@ -8,21 +8,24 @@ import (
 type User struct {
 	Email    string
 	Password []byte
+	Admin    bool
 }
 
 const usersSchema = `
 	email VARCHAR(255) PRIMARY KEY,
-	password BINARY(60) NOT NULL
+	password BINARY(60) NOT NULL,
+	admin BOOLEAN NOT NULL
 `
 
 // GetUser gets the user with the given email.
 func GetUser(email string) *User {
-	row := db.QueryRow(`SELECT email,password FROM users WHERE email=?`, email)
+	row := db.QueryRow(`SELECT email,password,admin FROM users WHERE email=?`, email)
 	if row != nil {
 		var email string
 		var password []byte
-		row.Scan(&email, &password)
-		return &User{Email: email, Password: password}
+		var admin bool
+		row.Scan(&email, &password, &admin)
+		return &User{Email: email, Password: password, Admin: admin}
 	}
 	return nil
 }
