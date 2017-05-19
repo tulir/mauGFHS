@@ -15,7 +15,11 @@ const filesSchema = `
 	name VARCHAR(255) NOT NULL,
 	namespace VARCHAR(255) NOT NULL,
 	mime VARCHAR(255) NOT NULL,
-	UNIQUE KEY (name, namespace)
+	UNIQUE KEY (name, namespace),
+	CONSTRAINT namespace_name
+		FOREIGN KEY (namespace) REFERENCES namespaces (name)
+		ON DELETE CASCADE
+		ON UPDATE RESTRICT
 `
 
 // GetFileByID gets a file by its storage ID.
