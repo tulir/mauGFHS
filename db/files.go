@@ -44,10 +44,10 @@ func scanFile(row *sql.Row) *File {
 }
 
 // GetPermissions returns the permissions to this file.
-func (file *File) GetPermissions() []*Permission {
+func (file *File) GetPermissions() []Permission {
 	results, err := db.Query(`SELECT * FROM permissions WHERE file=?`, file.ID)
 	if err != nil {
-		return []*Permission{}
+		return []Permission{}
 	}
-	return scanPermissions(results)
+	return scanFilePermissions(results)
 }

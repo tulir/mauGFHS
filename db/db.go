@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"fmt"
 
+	"maunium.net/go/mauGFHS/db/config"
+
 	// Import MySQL driver
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -11,10 +13,9 @@ import (
 var db *sql.DB
 
 // Open opens a database connection with the given details.
-func Open(username, password, address string, port int, database string) error {
+func Open(config dbconfig.DBConfig) error {
 	var err error
-	fmt.Printf("%s:%s@%s:%d/%s\n", username, password, address, port, database)
-	db, err = sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%d)/%s", username, password, address, port, database))
+	db, err = sql.Open("mysql", config.GetDSN())
 	if err != nil {
 		return err
 	}
@@ -46,5 +47,6 @@ func CreateTables() {
 	createTable("users", usersSchema)
 	createTable("authtokens", authTokensSchema)
 	createTable("files", filesSchema)
-	createTable("permissions", permissionsSchema)
+	createTable("filepermissions", filePermissionsSchema)
+	createTable("nspermissions", nsPermissionsSchema)
 }

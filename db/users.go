@@ -1,5 +1,9 @@
 package db
 
+import (
+	"golang.org/x/crypto/bcrypt"
+)
+
 // User represents a row in the users table.
 type User struct {
 	Email    string
@@ -22,6 +26,18 @@ func GetUser(email string) *User {
 		return &User{Email: email, Password: password}
 	}
 	return nil
+}
+
+// CheckPassword checks if the given password is correct.
+func (user *User) CheckPassword(password []byte) bool {
+	return bcrypt.CompareHashAndPassword(user.Password, password) != nil
+}
+
+// ResetPassword resets the password of this user.
+func (user *User) ResetPassword(newPassword []byte) bool {
+	var err error
+	user.Password, err = bcrypt.GenerateFromPassword(newPassword, bcrypt.DefaultCost)
+	return err == nil
 }
 
 // GetAuthTokens gets the auth tokens of the user.
@@ -62,11 +78,38 @@ func (user *User) CheckRecoveryToken(token string) bool {
 	return false
 }
 
-// GetPermissions returns the permissions this user has.
-func (user *User) GetPermissions() []*Permission {
-	results, err := db.Query(`SELECT * FROM permissions WHERE owner=?`, user.Email)
+// GetPermissionsToFiles returns the file permissions this user has.
+func (user *User) GetPermissionsToFiles() []Permission {
+	results, err := db.Query(`SELECT * FROM filepermissions WHERE user=?`, user.Email)
 	if err != nil {
-		return []*Permission{}
+		return []Permission{}
 	}
-	return scanPermissions(results)
+	return scanFilePermissions(results)
+}
+
+// GetPermissionToFile gets the permission this user has to the given file.
+func (user *User) GetPermissionToFile(file *File) Permission {
+	row := db.QueryRow(`SELECT * FROM filepermissions WHERE user=? AND file=?`, user.Email, file.ID)
+	if row == nil {
+		return &FilePermission{basePermission{User: user.Email, Target: file.ID, Permission: PermissionNothing}}
+	}
+	return scanFilePermission(row)
+}
+
+// GetPermissionsToNamespaces returns the namespace permissions this user has.
+func (user *User) GetPermissionsToNamespaces() []Permission {
+	results, err := db.Query(`SELECT * FROM nspermissions WHERE user=?`, user.Email)
+	if err != nil {
+		return []Permission{}
+	}
+	return scanNamespacePermissions(results)
+}
+
+// GetPermissionToNamespace gets the permission this user has to the given namespace.
+func (user *User) GetPermissionToNamespace(namespace string) Permission {
+	row := db.QueryRow(`SELECT * FROM filepermissions WHERE user=? AND file=?`, user.Email, namespace)
+	if row == nil {
+		return &NamespacePermission{basePermission{User: user.Email, Target: namespace, Permission: PermissionNothing}}
+	}
+	return scanNamespacePermission(row)
 }
