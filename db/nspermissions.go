@@ -15,6 +15,10 @@ const nsPermissionsSchema = `
 	CONSTRAINT user_email
 		FOREIGN KEY (user) REFERENCES users (email)
 		ON DELETE CASCADE
+		ON UPDATE RESTRICT,
+	CONSTRAINT namespace_name
+		FOREIGN KEY (namespace) REFERENCES namespaces (name)
+		ON DELETE CASCADE
 		ON UPDATE RESTRICT
 `
 

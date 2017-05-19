@@ -46,6 +46,7 @@ func Close() error {
 func CreateTables() {
 	createTable("users", usersSchema)
 	createTable("authtokens", authTokensSchema)
+	createTable("namespaces", namespacesSchema)
 	createTable("files", filesSchema)
 	createTable("filepermissions", filePermissionsSchema)
 	createTable("nspermissions", nsPermissionsSchema)

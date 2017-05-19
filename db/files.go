@@ -7,15 +7,14 @@ type File struct {
 	ID        string
 	Name      string
 	Namespace string
-	Extension string
+	MIME      string
 }
 
 const filesSchema = `
-	id CHAR(32) NOT NULL,
+	id CHAR(32) PRIMARY KEY,
 	name VARCHAR(255) NOT NULL,
 	namespace VARCHAR(255) NOT NULL,
-	extension VARCHAR(255) NOT NULL,
-	PRIMARY KEY (id),
+	mime VARCHAR(255) NOT NULL,
 	UNIQUE KEY (name, namespace)
 `
 
@@ -28,7 +27,7 @@ func GetFileByID(id string) *File {
 	return nil
 }
 
-// GetFileByPath gets a file by its namespace, name and extension.
+// GetFileByPath gets a file by its namespace and name.
 func GetFileByPath(name, namespace string) *File {
 	row := db.QueryRow(`SELECT * FROM files WHERE name=? AND namespace=?`, name, namespace)
 	if row != nil {
@@ -38,9 +37,9 @@ func GetFileByPath(name, namespace string) *File {
 }
 
 func scanFile(row *sql.Row) *File {
-	var id, name, namespace, extension string
-	row.Scan(&id, &name, &namespace, &extension)
-	return &File{ID: id, Name: name, Namespace: namespace, Extension: extension}
+	var id, name, namespace, mime string
+	row.Scan(&id, &name, &namespace, &mime)
+	return &File{ID: id, Name: name, Namespace: namespace, MIME: mime}
 }
 
 // GetPermissions returns the permissions to this file.

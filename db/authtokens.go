@@ -17,7 +17,7 @@ const authTokensSchema = `
 	token VARCHAR(64) NOT NULL,
 	createdBy VARCHAR(255) NOT NULL,
 	expiry BIGINT NOT NULL,
-	is_recovery BOOLEAN NOT NULL DEFAULT '0',
+	isRecovery BOOLEAN NOT NULL DEFAULT '0',
 	PRIMARY KEY (user, token),
 	CONSTRAINT user_email
 		FOREIGN KEY (user) REFERENCES users (email)

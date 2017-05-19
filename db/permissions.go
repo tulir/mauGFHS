@@ -20,16 +20,22 @@ const (
 	PermissionRead      PermissionValue = 1
 	PermissionWrite     PermissionValue = 2
 	PermissionReadWrite PermissionValue = PermissionRead + PermissionWrite
+	PermissionCreator   PermissionValue = 4
 )
 
 // CanRead checks if this PermissionValue is sufficient for reading files.
 func (pv PermissionValue) CanRead() bool {
-	return pv&PermissionRead == 1
+	return pv&PermissionRead == 1 || pv.IsCreator()
 }
 
 // CanWrite checks if this PermissionValue is sufficient for writing files.
 func (pv PermissionValue) CanWrite() bool {
-	return pv&PermissionWrite == 1
+	return pv&PermissionWrite == 1 || pv.IsCreator()
+}
+
+// IsCreator checks if this PermissionValue is for the creator of the target.
+func (pv PermissionValue) IsCreator() bool {
+	return pv&PermissionCreator == 1
 }
 
 // Permission is an abstract permission.

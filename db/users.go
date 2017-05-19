@@ -11,14 +11,13 @@ type User struct {
 }
 
 const usersSchema = `
-	email VARCHAR(255) NOT NULL,
-	password BINARY(60) NOT NULL,
-	PRIMARY KEY (email)
+	email VARCHAR(255) PRIMARY KEY,
+	password BINARY(60) NOT NULL
 `
 
 // GetUser gets the user with the given email.
 func GetUser(email string) *User {
-	row := db.QueryRow(`SELECT * FROM users WHERE email=?`, email)
+	row := db.QueryRow(`SELECT email,password FROM users WHERE email=?`, email)
 	if row != nil {
 		var email string
 		var password []byte
@@ -42,7 +41,7 @@ func (user *User) ResetPassword(newPassword []byte) bool {
 
 // GetAuthTokens gets the auth tokens of the user.
 func (user *User) GetAuthTokens() []AuthToken {
-	results, err := db.Query(`SELECT * FROM authtokens WHERE user=? AND is_recovery=0`, user.Email)
+	results, err := db.Query(`SELECT user,token,createdBy,expiry,isRecovery FROM authtokens WHERE user=? AND is_recovery=0`, user.Email)
 	if err != nil {
 		return []AuthToken{}
 	}
@@ -51,7 +50,7 @@ func (user *User) GetAuthTokens() []AuthToken {
 
 // GetRecoveryTokens gets the password recovery tokens of the user.
 func (user *User) GetRecoveryTokens() []AuthToken {
-	results, err := db.Query(`SELECT * FROM authtokens WHERE user=? AND is_recovery=1`, user.Email)
+	results, err := db.Query(`SELECT user,token,createdBy,expiry,isRecovery FROM authtokens WHERE user=? AND is_recovery=1`, user.Email)
 	if err != nil {
 		return []AuthToken{}
 	}
@@ -80,7 +79,7 @@ func (user *User) CheckRecoveryToken(token string) bool {
 
 // GetPermissionsToFiles returns the file permissions this user has.
 func (user *User) GetPermissionsToFiles() []Permission {
-	results, err := db.Query(`SELECT * FROM filepermissions WHERE user=?`, user.Email)
+	results, err := db.Query(`SELECT user,namespace,permission FROM filepermissions WHERE user=?`, user.Email)
 	if err != nil {
 		return []Permission{}
 	}
@@ -89,7 +88,7 @@ func (user *User) GetPermissionsToFiles() []Permission {
 
 // GetPermissionToFile gets the permission this user has to the given file.
 func (user *User) GetPermissionToFile(file *File) Permission {
-	row := db.QueryRow(`SELECT * FROM filepermissions WHERE user=? AND file=?`, user.Email, file.ID)
+	row := db.QueryRow(`SELECT user,file,permission FROM filepermissions WHERE user=? AND file=?`, user.Email, file.ID)
 	if row == nil {
 		return &FilePermission{basePermission{User: user.Email, Target: file.ID, Permission: PermissionNothing}}
 	}
@@ -98,7 +97,7 @@ func (user *User) GetPermissionToFile(file *File) Permission {
 
 // GetPermissionsToNamespaces returns the namespace permissions this user has.
 func (user *User) GetPermissionsToNamespaces() []Permission {
-	results, err := db.Query(`SELECT * FROM nspermissions WHERE user=?`, user.Email)
+	results, err := db.Query(`SELECT user,namespace,permission FROM nspermissions WHERE user=?`, user.Email)
 	if err != nil {
 		return []Permission{}
 	}
@@ -106,10 +105,10 @@ func (user *User) GetPermissionsToNamespaces() []Permission {
 }
 
 // GetPermissionToNamespace gets the permission this user has to the given namespace.
-func (user *User) GetPermissionToNamespace(namespace string) Permission {
-	row := db.QueryRow(`SELECT * FROM filepermissions WHERE user=? AND file=?`, user.Email, namespace)
+func (user *User) GetPermissionToNamespace(ns *Namespace) Permission {
+	row := db.QueryRow(`SELECT user,file,permission FROM filepermissions WHERE user=? AND file=?`, user.Email, ns.Name)
 	if row == nil {
-		return &NamespacePermission{basePermission{User: user.Email, Target: namespace, Permission: PermissionNothing}}
+		return &NamespacePermission{basePermission{User: user.Email, Target: ns.Name, Permission: PermissionNothing}}
 	}
 	return scanNamespacePermission(row)
 }
