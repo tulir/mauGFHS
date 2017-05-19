@@ -4,12 +4,15 @@ import "fmt"
 
 // Config is the base configuration container.
 type Config struct {
-	Database DBConfig `yaml:"database"`
+	Database  DBConfig         `yaml:"database"`
+	Addresses []ListenLocation `yaml:"listen"`
 }
 
-type NamespaceConfig struct {
-	Namespace  string `yaml:"namespace"`
-	Extensions string
+// ListenLocation is a location where the server should listen.
+type ListenLocation struct {
+	Address      string `yaml:"address"`
+	Port         uint8  `yaml:"port"`
+	TrustHeaders bool   `yaml:"trust-headers"`
 }
 
 // DBConfig contains connection information for the database.
@@ -21,6 +24,7 @@ type DBConfig struct {
 	Database string `yaml:"database"`
 }
 
+// GetDSN gets the SQL data source name for this database config.
 func (config DBConfig) GetDSN() string {
-	fmt.Sprintf("%s:%s@tcp(%s:%d)/%s", config.Username, config.Password, config.Address, config.Port, config.Database)
+	return fmt.Sprintf("%s:%s@tcp(%s:%d)/%s", config.Username, config.Password, config.Address, config.Port, config.Database)
 }
