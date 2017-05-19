@@ -25,6 +25,7 @@ import (
 
 	"github.com/gorilla/mux"
 	configpkg "maunium.net/go/mauGFHS/config"
+	"maunium.net/go/mauGFHS/db"
 )
 
 var config = configpkg.MainConfig
@@ -33,8 +34,8 @@ var config = configpkg.MainConfig
 func Open() {
 	mainRouter := mux.NewRouter()
 	r := mainRouter.PathPrefix(config.Listen.PathPrefix).Subrouter()
-	r.Methods("GET", "PUT", "DELETE").HandleFunc("/direct/{id:[a-zA-Z0-9]{32}}", nil)
-	r.Methods("GET", "PUT", "POST", "DELETE").HandlerFunc("/", nil)
+	r.Methods(http.MethodGet).Path("/direct/{id:[a-zA-Z0-9]{32}}").HandlerFunc(GetFileByID)
+	r.Methods(http.MethodGet).Path("/direct/{namespace:[a-zA-Z0-9\\/]+}/{name}").HandlerFunc(GetFileByPath)
 
 	server := &http.Server{
 		Handler:      mainRouter,
@@ -44,4 +45,32 @@ func Open() {
 	}
 
 	log.Fatalln(server.ListenAndServe())
+}
+
+// GetFileByID handles an ID-based GET request.
+func GetFileByID(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	file := db.GetFileByID(vars["id"])
+	getFile(w, r, file)
+}
+
+// GetFileByPath handles a path-based GET request.
+func GetFileByPath(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	file := db.GetFileByPath(vars["name"], vars["namespace"])
+	getFile(w, r, file)
+}
+
+func getFile(w http.ResponseWriter, r *http.Request, file *db.File) {
+	if file == nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	data, err := file.Read()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		log.Errorf("Failed to read file %s: %v\n", file.Path(), err)
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write(data)
 }
