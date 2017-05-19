@@ -16,21 +16,29 @@
 
 package db
 
-import "database/sql"
+import (
+	"database/sql"
+	"io/ioutil"
+	"path"
+)
 
 // File represents a file ID to name link.
 type File struct {
-	ID        string
-	Name      string
-	Namespace string
-	MIME      string
+	ID                 string
+	Name               string
+	Namespace          string
+	MIME               string
+	DefaultPermissions PermissionValue
+	namespace          *Namespace
+	permissions        []Permission
 }
 
 const filesSchema = `
-	id CHAR(32) PRIMARY KEY,
-	name VARCHAR(255) NOT NULL,
-	namespace VARCHAR(255) NOT NULL,
-	mime VARCHAR(255) NOT NULL,
+	id                 CHAR(32)          PRIMARY KEY,
+	name               VARCHAR(255)      NOT NULL,
+	namespace          VARCHAR(255)      NOT NULL,
+	mime               VARCHAR(255)      NOT NULL,
+	defaultPermissions SMALLINT UNSIGNED NOT NULL,
 	UNIQUE KEY (name, namespace),
 	CONSTRAINT namespace_name
 		FOREIGN KEY (namespace) REFERENCES namespaces (name)
@@ -40,7 +48,7 @@ const filesSchema = `
 
 // GetFileByID gets a file by its storage ID.
 func GetFileByID(id string) *File {
-	row := db.QueryRow(`SELECT * FROM files WHERE id=?`, id)
+	row := db.QueryRow(`SELECT id,name,namespace,mime,defaultPermissions FROM files WHERE id=?`, id)
 	if row != nil {
 		return scanFile(row)
 	}
@@ -48,8 +56,8 @@ func GetFileByID(id string) *File {
 }
 
 // GetFileByPath gets a file by its namespace and name.
-func GetFileByPath(name, namespace string) *File {
-	row := db.QueryRow(`SELECT * FROM files WHERE name=? AND namespace=?`, name, namespace)
+func GetFileByPath(namespace, name string) *File {
+	row := db.QueryRow(`SELECT id,name,namespace,mime,defaultPermissions FROM files WHERE namespace=? AND name=?`, namespace, name)
 	if row != nil {
 		return scanFile(row)
 	}
@@ -58,15 +66,38 @@ func GetFileByPath(name, namespace string) *File {
 
 func scanFile(row *sql.Row) *File {
 	var id, name, namespace, mime string
-	row.Scan(&id, &name, &namespace, &mime)
-	return &File{ID: id, Name: name, Namespace: namespace, MIME: mime}
+	var defaultPermissions uint8
+	row.Scan(&id, &name, &namespace, &mime, &defaultPermissions)
+	return &File{ID: id, Name: name, Namespace: namespace, MIME: mime, DefaultPermissions: PermissionValue(defaultPermissions)}
 }
 
 // GetPermissions returns the permissions to this file.
 func (file *File) GetPermissions() []Permission {
+	if file.permissions != nil {
+		return file.permissions
+	}
 	results, err := db.Query(`SELECT * FROM permissions WHERE file=?`, file.ID)
 	if err != nil {
 		return []Permission{}
 	}
-	return scanFilePermissions(results)
+	file.permissions = scanFilePermissions(results)
+	return file.permissions
+}
+
+// GetNamespace returns the namespace this file is in.
+func (file *File) GetNamespace() *Namespace {
+	if file.namespace == nil || file.namespace.Name != file.Namespace {
+		file.namespace = GetNamespace(file.Namespace)
+	}
+	return file.namespace
+}
+
+// Read reads the file from disk.
+func (file *File) Read() ([]byte, error) {
+	return ioutil.ReadFile(path.Join(dataPath, file.ID))
+}
+
+// Path gets the display path of the file.
+func (file *File) Path() string {
+	return file.Namespace + "/" + file.Name
 }

@@ -23,36 +23,48 @@ import (
 
 // Namespace contains the details of a namespace.
 type Namespace struct {
-	Name      string
-	Parent    string
-	MIMETypes []string
+	Name               string
+	DefaultPermissions PermissionValue
+	MIMETypes          []string
+	parent             *Namespace
+	children           []*Namespace
 }
 
 const namespacesSchema = `
-	name VARCHAR(255) PRIMARY KEY,
-	parent VARCHAR(255) NOT NULL,
-	mimes TEXT NOT NULL
+	name               VARCHAR(255)      PRIMARY KEY,
+	defaultPermissions SMALLINT UNSIGNED NOT NULL,
+	mimes              TEXT              NOT NULL
 `
 
 func scanNamespace(row *sql.Row) *Namespace {
 	var name, mimes string
-	row.Scan(&name, &mimes)
-	return &Namespace{Name: name, MIMETypes: strings.Split(mimes, ",")}
+	var defaultPermissions uint8
+	row.Scan(&name, &defaultPermissions, &mimes)
+	return &Namespace{
+		Name:               name,
+		DefaultPermissions: PermissionValue(defaultPermissions),
+		MIMETypes:          strings.Split(mimes, ","),
+	}
 }
 
 func scanNamespaces(results *sql.Rows) []*Namespace {
 	data := []*Namespace{}
 	for results.Next() {
-		var name, parent, mimes string
-		results.Scan(&name, &parent, &mimes)
-		data = append(data, &Namespace{Name: name, MIMETypes: strings.Split(mimes, ",")})
+		var name, mimes string
+		var defaultPermissions uint8
+		results.Scan(&name, &defaultPermissions, &mimes)
+		data = append(data, &Namespace{
+			Name:               name,
+			DefaultPermissions: PermissionValue(defaultPermissions),
+			MIMETypes:          strings.Split(mimes, ","),
+		})
 	}
 	return data
 }
 
 // GetNamespace gets the namespace with the given name from the database.
 func GetNamespace(name string) *Namespace {
-	row := db.QueryRow(`SELECT name,parent,mimes FROM namespaces WHERE name=?`, name)
+	row := db.QueryRow(`SELECT name,defaultPermissions,mimes FROM namespaces WHERE name=?`, name)
 	if row != nil {
 		return scanNamespace(row)
 	}
@@ -61,19 +73,26 @@ func GetNamespace(name string) *Namespace {
 
 // GetParent gets the parent of this namespace, or nil if this namespace doesn't have parent.
 func (ns *Namespace) GetParent() *Namespace {
-	if len(ns.Parent) == 0 {
-		return nil
+	if ns.parent == nil {
+		parts := strings.Split(ns.Name, "/")
+		if len(parts) == 1 {
+			return nil
+		}
+		ns.parent = GetNamespace(strings.Join(parts[:len(parts)-1], "/"))
 	}
-	return GetNamespace(ns.Parent)
+	return ns.parent
 }
 
 // GetChildren gets the namespaces that are children of this namespace.
 func (ns *Namespace) GetChildren() []*Namespace {
-	results, err := db.Query(`SELECT name,parent,mimes FROM namespaces WHERE parent=?`, ns.Name)
-	if err == nil {
-		return scanNamespaces(results)
+	if ns.children == nil {
+		results, err := db.Query(`SELECT name,defaultPermissions,mimes FROM namespaces WHERE name LIKE ?`, ns.Name+"/%")
+		if err != nil {
+			return nil
+		}
+		ns.children = scanNamespaces(results)
 	}
-	return nil
+	return ns.children
 }
 
 // MIMETypesString turns the allowed MIME types array into a string.
@@ -93,5 +112,5 @@ func (ns *Namespace) Update() {
 
 // Insert inserts this namespace definition into the database.
 func (ns *Namespace) Insert() {
-	db.Exec("INSERT INTO namespaces (name, mimetypes) VALUES (?, ?)", ns.Name, ns.MIMETypesString())
+	db.Exec("INSERT INTO namespaces (name, defaultPermissions, mimetypes) VALUES (?, ?, ?)", ns.Name, ns.DefaultPermissions, ns.MIMETypesString())
 }
