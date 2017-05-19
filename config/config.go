@@ -20,8 +20,8 @@ type Config struct {
 // LogConfig contains logging configurations
 type LogConfig struct {
 	Directory      string `yaml:"directory"`
-	FileNameFormat string `yaml:"file-name-format"`
-	FileMode       uint32 `yaml:"file-mode"`
+	FileNameFormat string `yaml:"fileNameFormat"`
+	FileMode       uint32 `yaml:"fileMode"`
 }
 
 // GetFileFormat returns a mauLogger-compatible logger file format based on the data in the struct.
@@ -46,7 +46,7 @@ func (lc LogConfig) Configure(log *maulogger.Logger) {
 type ListenLocation struct {
 	Address      string `yaml:"address"`
 	Port         uint8  `yaml:"port"`
-	TrustHeaders bool   `yaml:"trust-headers"`
+	TrustHeaders bool   `yaml:"trustHeaders"`
 }
 
 // DBConfig contains connection information for the database.
