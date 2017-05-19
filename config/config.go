@@ -51,7 +51,7 @@ type ListenLocation struct {
 
 // DBConfig contains connection information for the database.
 type DBConfig struct {
-	Address  string `yaml:"address"`
+	Host     string `yaml:"host"`
 	Port     uint8  `yaml:"port"`
 	Username string `yaml:"username"`
 	Password string `yaml:"password"`
@@ -60,7 +60,7 @@ type DBConfig struct {
 
 // GetDSN gets the SQL data source name for this database config.
 func (config DBConfig) GetDSN() string {
-	return fmt.Sprintf("%s:%s@tcp(%s:%d)/%s", config.Username, config.Password, config.Address, config.Port, config.Database)
+	return fmt.Sprintf("%s:%s@tcp(%s:%d)/%s", config.Username, config.Password, config.Host, config.Port, config.Database)
 }
 
 var config Config
