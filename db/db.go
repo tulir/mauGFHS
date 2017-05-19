@@ -27,14 +27,16 @@ import (
 )
 
 var db *sql.DB
+var dataPath string
 
 // Open opens a database connection with the given details.
-func Open(config dbconfig.DBConfig) error {
+func Open(config dbconfig.DBConfig, dataPathVar string) error {
 	var err error
 	db, err = sql.Open("mysql", config.GetDSN())
 	if err != nil {
 		return err
 	}
+	dataPath = dataPathVar
 	return nil
 }
 

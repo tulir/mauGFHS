@@ -32,3 +32,6 @@ listen:
   trustHeaders: false
   # Prefix for API endpoint paths
   pathPrefix: /api
+
+# The path where files should be stored
+dataPath: ./data

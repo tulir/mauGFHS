@@ -31,6 +31,7 @@ type Config struct {
 	Database DBConfig       `yaml:"database"`
 	Listen   ListenLocation `yaml:"listen"`
 	Logging  LogConfig      `yaml:"logging"`
+	DataPath string         `yaml:"dataPath"`
 }
 
 // LogConfig contains logging configurations
