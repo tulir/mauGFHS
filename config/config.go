@@ -19,9 +19,11 @@ type Config struct {
 
 // LogConfig contains logging configurations
 type LogConfig struct {
-	Directory      string `yaml:"directory"`
-	FileNameFormat string `yaml:"fileNameFormat"`
-	FileMode       uint32 `yaml:"fileMode"`
+	Directory       string `yaml:"directory"`
+	FileNameFormat  string `yaml:"fileNameFormat"`
+	FileDateFormat  string `yaml:"fileDateFormat"`
+	FileMode        uint32 `yaml:"fileMode"`
+	TimestampFormat string `yaml:"timestampFormat"`
 }
 
 // GetFileFormat returns a mauLogger-compatible logger file format based on the data in the struct.
@@ -40,6 +42,7 @@ func (lc LogConfig) GetFileFormat() maulogger.LoggerFileFormat {
 func (lc LogConfig) Configure(log *maulogger.Logger) {
 	log.FileFormat = lc.GetFileFormat()
 	log.FileMode = os.FileMode(lc.FileMode)
+	log.TimeFormat = lc.TimestampFormat
 }
 
 // ListenLocation is a location where the server should listen.
