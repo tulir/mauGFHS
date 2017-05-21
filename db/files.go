@@ -19,6 +19,7 @@ package db
 import (
 	"database/sql"
 	"io/ioutil"
+	"net/http"
 	"path"
 
 	log "maunium.net/go/maulogger"
@@ -84,9 +85,10 @@ func (file *File) Insert() error {
 	return err
 }
 
-// Update updates the metadata of this File in the database.
-func (file *File) Update() {
-	db.Exec("UPDATE files SET mime=%s,defaultPermissions=%s WHERE id=%s", file.MIME, uint8(file.DefaultPermissions), file.ID)
+// SetDefaultPermissions sets the default permissions to this file.
+func (file *File) SetDefaultPermissions(defaultPermissions PermissionValue) {
+	file.DefaultPermissions = defaultPermissions
+	db.Exec("UPDATE files SET defaultPermissions=%s WHERE id=%s", uint8(file.DefaultPermissions), file.ID)
 }
 
 // Delete deletes this file in the database.
@@ -158,7 +160,8 @@ func (file *File) Read() ([]byte, error) {
 // Write writes data for this file to the disk.
 func (file *File) Write(data []byte) error {
 	file.Size = len(data)
-	db.Exec("UPDATE files SET size=%s WHERE id=%s", file.Size, file.ID)
+	file.MIME = http.DetectContentType(data)
+	db.Exec("UPDATE files SET size=%s,mime=%s WHERE id=%s", file.Size, file.MIME, file.ID)
 	return ioutil.WriteFile(path.Join(dataPath, file.ID), data, 0644)
 }
 
