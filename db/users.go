@@ -114,6 +114,10 @@ func (user *User) GetPermissionToFile(file *File) Permission {
 	return scanFilePermission(row)
 }
 
+func (user *User) GetPermissionValueToFile(file *File) PermissionValue {
+	return user.GetPermissionToFile(file).GetPermission()
+}
+
 // GetPermissionsToNamespaces returns the namespace permissions this user has.
 func (user *User) GetPermissionsToNamespaces() []Permission {
 	results, err := db.Query(`SELECT user,namespace,permission FROM nspermissions WHERE user=?`, user.Email)
@@ -130,4 +134,8 @@ func (user *User) GetPermissionToNamespace(ns *Namespace) Permission {
 		return &NamespacePermission{basePermission{User: user.Email, Target: ns.Name, Permission: PermissionNothing}}
 	}
 	return scanNamespacePermission(row)
+}
+
+func (user *User) GetPermissionValueToNamespace(ns *Namespace) PermissionValue {
+	return user.GetPermissionToNamespace(ns).GetPermission()
 }

@@ -20,11 +20,14 @@ import (
 	"database/sql"
 	"io/ioutil"
 	"path"
+
+	log "maunium.net/go/maulogger"
 )
 
 // File represents a file ID to name link.
 type File struct {
 	ID                 string
+	Size               int
 	Name               string
 	Namespace          string
 	MIME               string
@@ -35,6 +38,7 @@ type File struct {
 
 const filesSchema = `
 	id                 CHAR(32)          PRIMARY KEY,
+	size               INTEGER           NOT NULL,
 	name               VARCHAR(255)      NOT NULL,
 	namespace          VARCHAR(255)      NOT NULL,
 	mime               VARCHAR(255)      NOT NULL,
@@ -48,7 +52,7 @@ const filesSchema = `
 
 // GetFileByID gets a file by its storage ID.
 func GetFileByID(id string) *File {
-	row := db.QueryRow(`SELECT id,name,namespace,mime,defaultPermissions FROM files WHERE id=?`, id)
+	row := db.QueryRow(`SELECT id,size,name,namespace,mime,defaultPermissions FROM files WHERE id=?`, id)
 	if row != nil {
 		return scanFile(row)
 	}
@@ -57,7 +61,7 @@ func GetFileByID(id string) *File {
 
 // GetFileByPath gets a file by its namespace and name.
 func GetFileByPath(namespace, name string) *File {
-	row := db.QueryRow(`SELECT id,name,namespace,mime,defaultPermissions FROM files WHERE namespace=? AND name=?`, namespace, name)
+	row := db.QueryRow(`SELECT id,size,name,namespace,mime,defaultPermissions FROM files WHERE namespace=? AND name=?`, namespace, name)
 	if row != nil {
 		return scanFile(row)
 	}
@@ -66,9 +70,57 @@ func GetFileByPath(namespace, name string) *File {
 
 func scanFile(row *sql.Row) *File {
 	var id, name, namespace, mime string
+	var size int
 	var defaultPermissions uint8
-	row.Scan(&id, &name, &namespace, &mime, &defaultPermissions)
-	return &File{ID: id, Name: name, Namespace: namespace, MIME: mime, DefaultPermissions: PermissionValue(defaultPermissions)}
+	row.Scan(&id, &size, &name, &namespace, &mime, &defaultPermissions)
+	return &File{ID: id, Size: size, Name: name, Namespace: namespace, MIME: mime, DefaultPermissions: PermissionValue(defaultPermissions)}
+}
+
+// Insert inserts this File into the database.
+func (file *File) Insert() error {
+	_, err := db.Exec(
+		"INSERT INTO files (id,size,name,namespace,mime,defaultPermissions) VALUES (?, ?, ?, ?, ?, ?)",
+		file.ID, file.Size, file.Name, file.Namespace, file.MIME, uint8(file.DefaultPermissions))
+	return err
+}
+
+// Update updates the metadata of this File in the database.
+func (file *File) Update() {
+	db.Exec("UPDATE files SET mime=%s,defaultPermissions=%s WHERE id=%s", file.MIME, uint8(file.DefaultPermissions), file.ID)
+}
+
+// Delete deletes this file in the database.
+func (file *File) Delete() {
+	db.Exec("DELETE FROM files WHERE id=%s", file.ID)
+}
+
+// Rename changes the name of this File.
+func (file *File) Rename(name string) error {
+	_, err := db.Exec("UPDATE files SET name=%s WHERE id=%s", name, file.ID)
+	if err != nil {
+		return err
+	}
+	file.Name = name
+	return nil
+}
+
+// Move moves this file into another namespace.
+func (file *File) Move(namespace string) error {
+	_, err := db.Exec("UPDATE files SET namespace=%s WHERE id=%s", namespace, file.ID)
+	if err != nil {
+		return err
+	}
+	file.Namespace = namespace
+	return nil
+}
+
+// GetPermissionsFor gets the permissions to this file for a certain user. If the user is nil, the
+// default permissions to the file will be returned.
+func (file *File) GetPermissionsFor(user *User) PermissionValue {
+	if user != nil {
+		return user.GetPermissionValueToFile(file)
+	}
+	return file.DefaultPermissions
 }
 
 // GetPermissions returns the permissions to this file.
@@ -76,7 +128,7 @@ func (file *File) GetPermissions() []Permission {
 	if file.permissions != nil {
 		return file.permissions
 	}
-	results, err := db.Query(`SELECT * FROM permissions WHERE file=?`, file.ID)
+	results, err := db.Query(`SELECT user,file,permission FROM filepermissions WHERE file=?`, file.ID)
 	if err != nil {
 		return []Permission{}
 	}
@@ -94,7 +146,20 @@ func (file *File) GetNamespace() *Namespace {
 
 // Read reads the file from disk.
 func (file *File) Read() ([]byte, error) {
-	return ioutil.ReadFile(path.Join(dataPath, file.ID))
+	data, err := ioutil.ReadFile(path.Join(dataPath, file.ID))
+	if len(data) != file.Size {
+		log.Warnf("File %s/%s had an unexpected size on disk! Expected: %d, got: %d", file.Namespace, file.Name, file.Size, len(data))
+		file.Size = len(data)
+		db.Exec("UPDATE files SET size=%s WHERE id=%s", file.Size, file.ID)
+	}
+	return data, err
+}
+
+// Write writes data for this file to the disk.
+func (file *File) Write(data []byte) error {
+	file.Size = len(data)
+	db.Exec("UPDATE files SET size=%s WHERE id=%s", file.Size, file.ID)
+	return ioutil.WriteFile(path.Join(dataPath, file.ID), data, 0644)
 }
 
 // Path gets the display path of the file.
