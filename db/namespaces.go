@@ -100,6 +100,16 @@ func (ns *Namespace) MIMETypesString() string {
 	return strings.Join(ns.MIMETypes, ",")
 }
 
+// IsMIMEAllowed checks if the given MIME type is allowed in this namespace.
+func (ns *Namespace) IsMIMEAllowed(mime string) bool {
+	for _, allowedMIME := range ns.MIMETypes {
+		if allowedMIME == mime {
+			return true
+		}
+	}
+	return false
+}
+
 // Delete deletes this namespace from the database.
 func (ns *Namespace) Delete() {
 	db.Exec("DELETE FROM namespaces WHERE name=?", ns.Name)

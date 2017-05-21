@@ -19,7 +19,6 @@ package db
 import (
 	"database/sql"
 	"io/ioutil"
-	"net/http"
 	"path"
 
 	log "maunium.net/go/maulogger"
@@ -141,7 +140,15 @@ func (file *File) GetPermissions() []Permission {
 // GetNamespace returns the namespace this file is in.
 func (file *File) GetNamespace() *Namespace {
 	if file.namespace == nil || file.namespace.Name != file.Namespace {
-		file.namespace = GetNamespace(file.Namespace)
+		ns := GetNamespace(file.Namespace)
+		if ns == nil {
+			ns = &Namespace{
+				Name:               file.Namespace,
+				DefaultPermissions: file.DefaultPermissions,
+				MIMETypes:          []string{},
+			}
+		}
+		file.namespace = ns
 	}
 	return file.namespace
 }
@@ -158,9 +165,9 @@ func (file *File) Read() ([]byte, error) {
 }
 
 // Write writes data for this file to the disk.
-func (file *File) Write(data []byte) error {
+func (file *File) Write(data []byte, mime string) error {
 	file.Size = len(data)
-	file.MIME = http.DetectContentType(data)
+	file.MIME = mime
 	db.Exec("UPDATE files SET size=%s,mime=%s WHERE id=%s", file.Size, file.MIME, file.ID)
 	return ioutil.WriteFile(path.Join(dataPath, file.ID), data, 0644)
 }
