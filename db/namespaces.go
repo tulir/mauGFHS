@@ -28,6 +28,7 @@ type Namespace struct {
 	MIMETypes          []string
 	parent             *Namespace
 	children           []*Namespace
+	permissions        []Permission
 }
 
 const namespacesSchema = `
@@ -95,6 +96,25 @@ func (ns *Namespace) GetChildren() []*Namespace {
 	return ns.children
 }
 
+func (ns *Namespace) CreateFile(name string) *File {
+	file := &File{
+		Namespace:          ns.Name,
+		Name:               name,
+		DefaultPermissions: ns.DefaultPermissions,
+	}
+	file.Insert()
+	for _, nspermission := range ns.GetPermissions() {
+		filepermission := &FilePermission{basePermission{
+			User:       nspermission.GetUser(),
+			Target:     file.ID,
+			Permission: nspermission.GetPermission(),
+		}}
+		filepermission.Insert()
+		file.permissions = append(file.permissions, filepermission)
+	}
+	return file
+}
+
 // MIMETypesString turns the allowed MIME types array into a string.
 func (ns *Namespace) MIMETypesString() string {
 	return strings.Join(ns.MIMETypes, ",")
@@ -108,6 +128,19 @@ func (ns *Namespace) IsMIMEAllowed(mime string) bool {
 		}
 	}
 	return false
+}
+
+// GetPermissions returns the permissions to this namespace.
+func (ns *Namespace) GetPermissions() []Permission {
+	if ns.permissions != nil {
+		return ns.permissions
+	}
+	results, err := db.Query(`SELECT user,namespace,permission FROM nspermissions WHERE namespace=?`, ns.Name)
+	if err != nil {
+		return []Permission{}
+	}
+	ns.permissions = scanNamespacePermissions(results)
+	return ns.permissions
 }
 
 // Delete deletes this namespace from the database.

@@ -59,29 +59,42 @@ func GetFileByID(w http.ResponseWriter, r *http.Request) {
 // GetFileByPath handles a path-based GET request.
 func GetFileByPath(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	getFile(w, r, db.GetFileByPath(vars["name"], vars["namespace"]))
+	getFile(w, r, db.GetFileByPath(vars["namespace"], vars["name"]))
 }
 
 // UpdateFileByID handles an ID-based PUT request.
 func UpdateFileByID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	updateFile(w, r, db.GetFileByID(vars["id"]))
+	file := db.GetFileByID(vars["id"])
+	if file == nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	updateFile(w, r, file.GetNamespace(), file)
 }
 
 // UpdateFileByPath handles a path-based PUT request.
 func UpdateFileByPath(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	updateFile(w, r, db.GetFileByPath(vars["name"], vars["namespace"]))
+	updateFile(w, r, db.GetNamespace(vars["namespace"]), db.GetFileByPath(vars["namespace"], vars["name"]))
 }
 
-func updateFile(w http.ResponseWriter, r *http.Request, file *db.File) {
-	if file == nil {
+func updateFile(w http.ResponseWriter, r *http.Request, ns *db.Namespace, file *db.File) {
+	if ns == nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
+	if file == nil {
+		file = ns.CreateFile("name")
+	}
 	user := CheckAuth(r)
-	if !file.GetPermissionsFor(user).CanWrite() {
-		w.WriteHeader(403)
+	if file != nil {
+		if !file.GetPermissionsFor(user).CanWrite() {
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+	} else if !ns.GetPermissionsFor(user).CanWrite() {
+		w.WriteHeader(http.StatusForbidden)
 		return
 	}
 
@@ -89,27 +102,27 @@ func updateFile(w http.ResponseWriter, r *http.Request, file *db.File) {
 
 	fileData, _, err := r.FormFile("upload")
 	if err != nil {
-		w.WriteHeader(400)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	data, err := ioutil.ReadAll(fileData)
 	if err != nil {
 		log.Errorln("Failed to read data in form file!")
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	mime := http.DetectContentType(data)
 	if !file.GetNamespace().IsMIMEAllowed(mime) {
-		w.WriteHeader(415)
+		w.WriteHeader(http.StatusUnsupportedMediaType)
 		return
 	}
 
 	err = file.Write(data, mime)
 	if err != nil {
 		log.Errorln("Failed to write file!")
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 }

@@ -54,7 +54,7 @@ func main() {
 	}
 	log.Debugln("Logging initialized.")
 
-	err = db.Open(config.Database)
+	err = db.Open(config.Database, config.DataPath)
 	if err != nil {
 		log.Fatalf("Failed to open database connection: %v\n", err)
 		if *debug {

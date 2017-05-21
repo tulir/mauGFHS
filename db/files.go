@@ -19,7 +19,9 @@ package db
 import (
 	"database/sql"
 	"io/ioutil"
+	"math/rand"
 	"path"
+	"time"
 
 	log "maunium.net/go/maulogger"
 )
@@ -49,6 +51,26 @@ const filesSchema = `
 		ON DELETE CASCADE
 		ON UPDATE RESTRICT
 `
+
+var src = rand.NewSource(time.Now().UnixNano())
+
+func GenerateFileID() string {
+	b := make([]byte, 32)
+	// A src.Int63() generates 63 random bits, enough for letterIdxMax characters!
+	for i, cache, remain := n-1, src.Int63(), letterIdxMax; i >= 0; {
+		if remain == 0 {
+			cache, remain = src.Int63(), letterIdxMax
+		}
+		if idx := int(cache & letterIdxMask); idx < len(letterBytes) {
+			b[i] = letterBytes[idx]
+			i--
+		}
+		cache >>= letterIdxBits
+		remain--
+	}
+
+	return string(b)
+}
 
 // GetFileByID gets a file by its storage ID.
 func GetFileByID(id string) *File {
