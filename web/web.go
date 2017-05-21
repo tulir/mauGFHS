@@ -66,10 +66,16 @@ func getFile(w http.ResponseWriter, r *http.Request, file *db.File) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
+	user := CheckAuth(r)
+	if !file.GetPermissionsFor(user).CanRead() {
+		w.WriteHeader(403)
+		return
+	}
 	data, err := file.Read()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		log.Errorf("Failed to read file %s: %v\n", file.Path(), err)
+		return
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Write(data)
