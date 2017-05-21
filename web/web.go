@@ -18,6 +18,7 @@ package web
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"time"
 
@@ -34,8 +35,10 @@ var config = configpkg.MainConfig
 func Open() {
 	mainRouter := mux.NewRouter()
 	r := mainRouter.PathPrefix(config.Listen.PathPrefix).Subrouter()
-	r.Methods(http.MethodGet).Path("/direct/{id:[a-zA-Z0-9]{32}}").HandlerFunc(GetFileByID)
-	r.Methods(http.MethodGet).Path("/direct/{namespace:[a-zA-Z0-9\\/]+}/{name}").HandlerFunc(GetFileByPath)
+	r.Methods(http.MethodGet).Path("/file/direct/{id:[a-zA-Z0-9]{32}}").HandlerFunc(GetFileByID)
+	r.Methods(http.MethodGet).Path("/file/{namespace:[a-zA-Z0-9\\/]+}/{name}").HandlerFunc(GetFileByPath)
+	r.Methods(http.MethodPut).Path("/file/direct/{id:[a-zA-Z0-9]{32}}").HandlerFunc(UpdateFileByID)
+	r.Methods(http.MethodPut).Path("/file/{namespace:[a-zA-Z0-9\\/]+}/{name}").HandlerFunc(UpdateFileByPath)
 
 	server := &http.Server{
 		Handler:      mainRouter,
@@ -50,15 +53,65 @@ func Open() {
 // GetFileByID handles an ID-based GET request.
 func GetFileByID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	file := db.GetFileByID(vars["id"])
-	getFile(w, r, file)
+	getFile(w, r, db.GetFileByID(vars["id"]))
 }
 
 // GetFileByPath handles a path-based GET request.
 func GetFileByPath(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	file := db.GetFileByPath(vars["name"], vars["namespace"])
-	getFile(w, r, file)
+	getFile(w, r, db.GetFileByPath(vars["name"], vars["namespace"]))
+}
+
+// UpdateFileByID handles an ID-based PUT request.
+func UpdateFileByID(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	updateFile(w, r, db.GetFileByID(vars["id"]))
+}
+
+// UpdateFileByPath handles a path-based PUT request.
+func UpdateFileByPath(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	updateFile(w, r, db.GetFileByPath(vars["name"], vars["namespace"]))
+}
+
+func updateFile(w http.ResponseWriter, r *http.Request, file *db.File) {
+	if file == nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	user := CheckAuth(r)
+	if !file.GetPermissionsFor(user).CanWrite() {
+		w.WriteHeader(403)
+		return
+	}
+
+	r.ParseMultipartForm(32 << 20)
+
+	fileData, _, err := r.FormFile("upload")
+	if err != nil {
+		w.WriteHeader(400)
+		return
+	}
+
+	data, err := ioutil.ReadAll(fileData)
+	if err != nil {
+		log.Errorln("Failed to read data in form file!")
+		w.WriteHeader(500)
+		return
+	}
+
+	mime := http.DetectContentType(data)
+	if !file.GetNamespace().IsMIMEAllowed(mime) {
+		w.WriteHeader(415)
+		return
+	}
+
+	err = file.Write(data, mime)
+	if err != nil {
+		log.Errorln("Failed to write file!")
+		w.WriteHeader(500)
+		return
+	}
 }
 
 func getFile(w http.ResponseWriter, r *http.Request, file *db.File) {
